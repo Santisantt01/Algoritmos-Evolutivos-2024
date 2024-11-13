@@ -22,7 +22,7 @@ import org.uma.jmetal.solution.integersolution.IntegerSolution;
 public class ColorPaletteRunner {
     public static void main(String[] args) throws Exception {
         // Cargar la imagen
-        BufferedImage image = ImageIO.read(new File("/Users/juancavani/Downloads/test.jpeg"));
+    	BufferedImage image = ImageIO.read(ColorPaletteRunner.class.getResourceAsStream("test.jpeg"));
         ColorPaletteProblem problem = new ColorPaletteProblem(image, 10);
 
         // Definir operadores genéticos
