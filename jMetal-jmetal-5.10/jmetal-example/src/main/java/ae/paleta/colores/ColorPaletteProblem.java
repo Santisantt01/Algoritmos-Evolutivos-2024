@@ -7,26 +7,36 @@ import java.util.List;
 
 import org.uma.jmetal.problem.integerproblem.impl.AbstractIntegerProblem;
 import org.uma.jmetal.solution.integersolution.IntegerSolution;
+import org.uma.jmetal.solution.integersolution.impl.DefaultIntegerSolution;
 
 public class ColorPaletteProblem extends AbstractIntegerProblem {
     private BufferedImage image;
-    private int iter = 0;
     private int maxPaletteSize;
-    
+    private int iter = 0;
+
     public ColorPaletteProblem(BufferedImage image, int maxPaletteSize) {
         this.image = image;
         this.maxPaletteSize = maxPaletteSize;
-        
-        setNumberOfVariables(maxPaletteSize * 3);
+
+        // Each color has R, G, B, and an active flag
+        setNumberOfVariables(maxPaletteSize * 4);
         setNumberOfObjectives(2);
+        setNumberOfConstraints(1);
         setName("ImagePaletteProblem");
 
         List<Integer> lowerLimit = new ArrayList<>(getNumberOfVariables());
         List<Integer> upperLimit = new ArrayList<>(getNumberOfVariables());
 
         for (int i = 0; i < getNumberOfVariables(); i++) {
-            lowerLimit.add(0);
-            upperLimit.add(255);
+            if ((i + 1) % 4 == 0) {
+                // Active flag: 0 or 1
+                lowerLimit.add(0);
+                upperLimit.add(1);
+            } else {
+                // Color components: 0 to 255
+                lowerLimit.add(0);
+                upperLimit.add(255);
+            }
         }
 
         setVariableBounds(lowerLimit, upperLimit);
@@ -34,69 +44,62 @@ public class ColorPaletteProblem extends AbstractIntegerProblem {
 
     @Override
     public void evaluate(IntegerSolution solution) {
-    	List<Color> palette = extractPalette(solution, maxPaletteSize);
-    	
-        List<Color> filteredPalette = filterPalette(palette);
+        List<Color> palette = extractPalette(solution);
 
-        double distance = calculatePaletteDistance(filteredPalette);
-        int paletteSize = filteredPalette.size();
+        double distance = calculatePaletteDistance(palette);
+        int paletteSize = palette.size();
 
-        paletteSize = Math.max(paletteSize, 1);
+        double maxPossibleDistance = calculateColorDistance(new Color(255,255,255), new Color(0,0,0));
 
-        solution.setObjective(0, distance);
-        solution.setObjective(1, paletteSize);
+        double normalizedDistance = distance / maxPossibleDistance;
+        double normalizedPaletteSize = paletteSize / maxPaletteSize;
+
+        solution.setObjective(0, normalizedDistance);
+        solution.setObjective(1, normalizedPaletteSize);
+        
+        evaluateConstraints(solution);
         
         iter++;
-        System.out.println(iter + ". " + paletteSize + " " + distance);
+        System.out.println(iter + ". Distance: " + distance + ", Palette Size: " + palette.size());
     }
-    
-    private List<Color> filterPalette(List<Color> palette) {
-        List<Color> uniquePalette = new ArrayList<>();
 
-        for (Color color : palette) {
-            boolean isUnique = true;
-            for (Color uniqueColor : uniquePalette) {
-                if (calculateColorDistance(uniqueColor, color) < 25) {
-                    isUnique = false;
-                    break;
-                }
-            }
-            if (isUnique) {
-                uniquePalette.add(color);
-            }
-        }
-
-        return uniquePalette;
-    }
-    
-    private List<Color> extractPalette(IntegerSolution solution, int paletteSize) {
+    private List<Color> extractPalette(IntegerSolution solution) {
         List<Color> palette = new ArrayList<>();
-        for (int i = 0; i < paletteSize * 3; i += 3) {
+        for (int i = 0; i < maxPaletteSize * 4; i += 4) {
             int r = solution.getVariable(i);
             int g = solution.getVariable(i + 1);
             int b = solution.getVariable(i + 2);
-            palette.add(new Color(r, g, b));
+            int active = solution.getVariable(i + 3);
+
+            if (active == 1) {
+                palette.add(new Color(r, g, b));
+            }
         }
         return palette;
     }
-   
-     private double calculatePaletteDistance(List<Color> palette) {
-	    double distTotal = 0.0;
-	
-	    for (int x = 0; x < image.getWidth(); x++) {
-	        for (int y = 0; y < image.getHeight(); y++) {
-	            Color pixelColor = new Color(image.getRGB(x, y));
-	            double minDist = Double.MAX_VALUE;
-	
-	            for (Color paletteColor : palette) {
-	                double dist = calculateColorDistance(paletteColor, pixelColor);
-	                minDist = Math.min(minDist, dist);
-	            }
-	            distTotal += minDist;
-	        }
-	    }
-	    return distTotal / (image.getWidth() * image.getHeight());
-	}
+
+    private double calculatePaletteDistance(List<Color> palette) {
+        if (palette.isEmpty()) {
+            return Double.MAX_VALUE;
+        }
+
+        double distTotal = 0.0;
+
+        for (int x = 0; x < image.getWidth(); x++) {
+            for (int y = 0; y < image.getHeight(); y++) {
+                Color pixelColor = new Color(image.getRGB(x, y));
+                double minDist = Double.MAX_VALUE;
+
+                for (Color paletteColor : palette) {
+                    double dist = calculateColorDistance(paletteColor, pixelColor);
+                    minDist = Math.min(minDist, dist);
+                }
+                distTotal += minDist;
+            }
+        }
+
+        return distTotal / (image.getWidth() * image.getHeight());
+    }
 
     private double calculateColorDistance(Color c1, Color c2) {
         int rDiff = c1.getRed() - c2.getRed();
@@ -105,5 +108,15 @@ public class ColorPaletteProblem extends AbstractIntegerProblem {
 
         return Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
     }
-
+    
+    public void evaluateConstraints(IntegerSolution solution) {
+        List<Color> palette = extractPalette(solution);
+        
+        solution.setConstraint(0, palette.isEmpty() ? -1 : 1);
+    }
+    
+    @Override
+    public IntegerSolution createSolution() {
+      return new DefaultIntegerSolution(bounds, getNumberOfObjectives(), getNumberOfConstraints());
+    }
 }
