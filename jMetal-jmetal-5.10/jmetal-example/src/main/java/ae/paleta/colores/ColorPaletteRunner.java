@@ -22,7 +22,7 @@ import org.uma.jmetal.solution.integersolution.IntegerSolution;
 
 public class ColorPaletteRunner {
     public static void main(String[] args) throws Exception {
-    	String imageName = "test6";
+    	String imageName = "hola";
         BufferedImage image = ImageIO.read(ColorPaletteRunner.class.getResourceAsStream(imageName + ".jpg"));
 
         int maxPaletteSize = 10;

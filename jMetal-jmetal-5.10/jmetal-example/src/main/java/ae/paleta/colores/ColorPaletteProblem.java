@@ -10,9 +10,9 @@ import org.uma.jmetal.solution.integersolution.IntegerSolution;
 import org.uma.jmetal.solution.integersolution.impl.DefaultIntegerSolution;
 
 public class ColorPaletteProblem extends AbstractIntegerProblem {
-    private BufferedImage image;
-    private int maxPaletteSize;
-    private int iter = 0;
+    BufferedImage image;
+    int maxPaletteSize;
+    int iter = 0;
 
     public ColorPaletteProblem(BufferedImage image, int maxPaletteSize) {
         this.image = image;
