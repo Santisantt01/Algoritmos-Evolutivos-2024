@@ -60,7 +60,7 @@ public class ColorPaletteProblem extends AbstractIntegerProblem {
         evaluateConstraints(solution);
         
         iter++;
-        System.out.println(iter + ". Distance: " + distance + ", Palette Size: " + palette.size());
+        System.out.println(iter + ". Distance: " + normalizedDistance + ", Palette Size: " + palette.size());
     }
 
     private List<Color> extractPalette(IntegerSolution solution) {

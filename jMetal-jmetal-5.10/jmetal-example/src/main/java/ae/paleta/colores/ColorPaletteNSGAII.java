@@ -54,9 +54,36 @@ public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
         return super.createInitialPopulation(); // Default behavior
     }
     
+    // @Override 
+    // protected boolean isStoppingConditionReached() {
+    //     return super.isStoppingConditionReached(); // Default behavior
+    // }
+
     @Override 
     protected boolean isStoppingConditionReached() {
-    	return super.isStoppingConditionReached(); // Default behavior
+        int stagnationThreshold = 50; // Number of generations to check for stagnation
+        double epsilon = 1e-4; // Small value to determine if the fitness values are considered equal
+        if (evaluations >= stagnationThreshold) {
+            List<Double> bestFitnessValues = new ArrayList<>();
+            for (int i = 0; i < getPopulation().size(); i++) {
+                bestFitnessValues.add(getPopulation().get(i).getObjective(0));
+            }
+
+            double averageFitness = bestFitnessValues.stream().mapToDouble(Double::doubleValue).average().orElse(Double.NaN);
+            boolean isStuck = true;
+            for (double fitness : bestFitnessValues) {
+                if (Math.abs(fitness - averageFitness) > epsilon) {
+                    isStuck = false;
+                    break;
+                }
+            }
+
+            if (isStuck) {
+                return true;
+            }
+        }
+
+        return super.isStoppingConditionReached();
     }
 
     public static void main(String[] args) throws Exception {
@@ -67,6 +94,13 @@ public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
         ColorPaletteProblem problem = new ColorPaletteProblem(image, maxPaletteSize);
         
         // Create custom initial population
+        // // Perform K-Means clustering to generate initial population
+        // int k = 50; // Number of clusters
+        // KMeansClustering kMeans = new KMeansClustering(image, k);
+        // List<IntegerSolution> initialPopulation = kMeans.generateInitialPopulation(problem);
+
+        // // Set the initial population in the algorithm
+        // algorithm.setInitialPopulation(initialPopulation);
 
         CrossoverOperator<IntegerSolution> crossoverOperator = new IntegerSBXCrossover(0.8, 20);
         MutationOperator<IntegerSolution> mutationOperator = new IntegerPolynomialMutation(1.0 / problem.getNumberOfVariables(), 20);
