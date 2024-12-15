@@ -51,16 +51,43 @@ public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
 
     @Override
     protected List<IntegerSolution> createInitialPopulation() {
+        // List<IntegerSolution> initialPopulation = new ArrayList<>(getMaxPopulationSize());
+        // BufferedImage image = ((ColorPaletteProblem) getProblem()).getImage();
+        // int k = getMaxPopulationSize();
+        // int numComponents = 4; // R, G, B, Active flag
+
+        // // Extract pixels from the image
+        // List<int[]> pixels = new ArrayList<>();
+        // for (int y = 0; y < image.getHeight(); y++) {
+        //     for (int x = 0; x < image.getWidth(); x++) {
+        //     Color color = new Color(image.getRGB(x, y));
+        //     pixels.add(new int[]{color.getRed(), color.getGreen(), color.getBlue()});
+        //     }
+        // }
+
+        // // Apply K-Means clustering
+        // KMeansClustering kMeans = new KMeansClustering(k);
+        // List<int[]> centroids = kMeans.cluster(pixels);
+
+        // // Create initial population based on centroids
+        // for (int[] centroid : centroids) {
+        //     IntegerSolution solution = getProblem().createSolution();
+        //     for (int i = 0; i < k; i++) {
+        //     solution.setVariableValue(i * numComponents, centroid[0]);
+        //     solution.setVariableValue(i * numComponents + 1, centroid[1]);
+        //     solution.setVariableValue(i * numComponents + 2, centroid[2]);
+        //     solution.setVariableValue(i * numComponents + 3, 1); // Active flag
+        //     }
+        //     initialPopulation.add(solution);
+        // }
+
+        // return initialPopulation;
         return super.createInitialPopulation(); // Default behavior
     }
-    
-    // @Override 
-    // protected boolean isStoppingConditionReached() {
-    //     return super.isStoppingConditionReached(); // Default behavior
-    // }
 
     @Override 
     protected boolean isStoppingConditionReached() {
+        // Check if the algorithm is stuck in a local optimum
         int stagnationThreshold = 50; // Number of generations to check for stagnation
         double epsilon = 1e-4; // Small value to determine if the fitness values are considered equal
         if (evaluations >= stagnationThreshold) {
@@ -94,13 +121,6 @@ public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
         ColorPaletteProblem problem = new ColorPaletteProblem(image, maxPaletteSize);
         
         // Create custom initial population
-        // // Perform K-Means clustering to generate initial population
-        // int k = 50; // Number of clusters
-        // KMeansClustering kMeans = new KMeansClustering(image, k);
-        // List<IntegerSolution> initialPopulation = kMeans.generateInitialPopulation(problem);
-
-        // // Set the initial population in the algorithm
-        // algorithm.setInitialPopulation(initialPopulation);
 
         CrossoverOperator<IntegerSolution> crossoverOperator = new IntegerSBXCrossover(0.8, 20);
         MutationOperator<IntegerSolution> mutationOperator = new IntegerPolynomialMutation(1.0 / problem.getNumberOfVariables(), 20);
@@ -115,7 +135,9 @@ public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
             50
         );
 
+        long startTime = System.currentTimeMillis();
         algorithm.run();
+        long endTime = System.currentTimeMillis();
 
         List<IntegerSolution> population = algorithm.getResult();
         IntegerSolution bestSolution = population.get(0);
@@ -156,5 +178,8 @@ public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
 
         System.out.println("Objetivo 1 (Distancia): " + bestSolution.getObjective(0));
         System.out.println("Objetivo 2 (Tamaño de paleta): " + palette.size());
+
+        long executionTime = endTime - startTime;
+        System.out.println("Tiempo total de ejecución: " + (executionTime / 1000.0) + " segundos");
     }
 }
