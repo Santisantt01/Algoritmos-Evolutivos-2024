@@ -14,6 +14,7 @@ import org.uma.jmetal.util.evaluator.impl.SequentialSolutionListEvaluator;
 import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
@@ -135,8 +136,22 @@ public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
 
     public static void main(String[] args) {
         try {
-            String imageName = "test1";
+            String imageName = "test4";
             BufferedImage image = ImageIO.read(ColorPaletteNSGAII.class.getResourceAsStream(imageName + ".jpg"));
+            int maxWidth = 750;
+            int maxHeight = 750;
+            if (image.getWidth() > maxWidth || image.getHeight() > maxHeight) {
+                double widthScale = (double) maxWidth / image.getWidth();
+                double heightScale = (double) maxHeight / image.getHeight();
+                double scale = Math.min(widthScale, heightScale);
+                int newWidth = (int) (image.getWidth() * scale);
+                int newHeight = (int) (image.getHeight() * scale);
+                BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, image.getType());
+                Graphics2D g2d = resizedImage.createGraphics();
+                g2d.drawImage(image, 0, 0, newWidth, newHeight, null);
+                g2d.dispose();
+                image = resizedImage;
+            }
 
             int maxPaletteSize = 10;
             ColorPaletteProblem problem = new ColorPaletteProblem(image, maxPaletteSize);
