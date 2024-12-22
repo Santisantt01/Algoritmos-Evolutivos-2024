@@ -11,24 +11,15 @@ import org.uma.jmetal.solution.integersolution.IntegerSolution;
 import org.uma.jmetal.util.comparator.RankingAndCrowdingDistanceComparator;
 import org.uma.jmetal.util.evaluator.impl.SequentialSolutionListEvaluator;
 
-import java.awt.Color;
-import java.awt.Desktop;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import javax.imageio.ImageIO;
+import java.util.*;
 
-import smile.clustering.GMeans;
 import smile.clustering.KMeans;
 
 public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
     enum InitialPopulationAlgorithm {
         DEFAULT,
-        KMEANS,
-        GMEANS
+        KMEANS
     }
 
     private InitialPopulationAlgorithm initialPopulationAlgorithm;
@@ -56,168 +47,73 @@ public class ColorPaletteNSGAII extends NSGAII<IntegerSolution> {
         this.initialPopulationAlgorithm = initialPopulationAlgorithm;
     }
     
-    private double[][] extractPixels(BufferedImage image) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        double[][] pixels = new double[width * height][3];
-
-        int index = 0;
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                Color color = new Color(image.getRGB(x, y));
-                pixels[index][0] = color.getRed();
-                pixels[index][1] = color.getGreen();
-                pixels[index][2] = color.getBlue();
-                index++;
-            }
-        }
-        return pixels;
-    }
-
-
     @Override
     protected List<IntegerSolution> createInitialPopulation() {
         if (initialPopulationAlgorithm == InitialPopulationAlgorithm.DEFAULT) {
             return super.createInitialPopulation();
         } else {
             List<IntegerSolution> initialPopulation = new ArrayList<>(getMaxPopulationSize());
-            BufferedImage image = ((ColorPaletteProblem) getProblem()).image;
-            int maxK = ((ColorPaletteProblem) getProblem()).maxPaletteSize;
+            ColorPaletteProblem problem = (ColorPaletteProblem) getProblem();
+            BufferedImage image = problem.image;
+            int maxK = problem.maxPaletteSize;
 
-            double[][] pixelArray = extractPixels(image);
-
-            double[][] centroids;
-            if (initialPopulationAlgorithm == InitialPopulationAlgorithm.GMEANS) {
-                centroids = GMeans.fit(pixelArray, maxK).centroids;
-            } else {
-                centroids = KMeans.fit(pixelArray, maxK).centroids;
-            }
+            double[][] pixels = ColorPaletteUtils.extractPixels(image);
+            double[][] centroids = KMeans.fit(pixels, maxK).centroids;
 
             for (double[] centroid : centroids) {
-                IntegerSolution solution = getProblem().createSolution();
+                IntegerSolution solution = problem.createSolution();
                 solution.setVariable(0, (int) centroid[0]);
                 solution.setVariable(1, (int) centroid[1]);
                 solution.setVariable(2, (int) centroid[2]);
-                solution.setVariable(3, 1); // Active flag
+                solution.setVariable(3, 1);
                 initialPopulation.add(solution);
             }
            
             return initialPopulation;
         }
     }
-    
-    @Override 
-    protected boolean isStoppingConditionReached() {
-        // Check if the algorithm is stuck in a local optimum
-        int stagnationThreshold = 50; // Number of generations to check for stagnation
-        double epsilon = 1e-4; // Small value to determine if the fitness values are considered equal
-        if (evaluations >= stagnationThreshold) {
-            List<Double> bestFitnessValues = new ArrayList<>();
-            for (int i = 0; i < getPopulation().size(); i++) {
-                bestFitnessValues.add(getPopulation().get(i).getObjective(0));
-            }
-
-            double averageFitness = bestFitnessValues.stream().mapToDouble(Double::doubleValue).average().orElse(Double.NaN);
-            boolean isStuck = true;
-            for (double fitness : bestFitnessValues) {
-                if (Math.abs(fitness - averageFitness) > epsilon) {
-                    isStuck = false;
-                    break;
-                }
-            }
-
-            if (isStuck) {
-                return true;
-            }
-        }
-
-        return super.isStoppingConditionReached();
-    }
 
     public static void main(String[] args) {
+        String imageName = "test9.jpg";
+        int maxWidth = 750;
+        int maxHeight = 750;
+        int maxPaletteSize = 10;
+
         try {
-            String imageName = "test4";
-            BufferedImage image = ImageIO.read(ColorPaletteNSGAII.class.getResourceAsStream(imageName + ".jpg"));
-            int maxWidth = 750;
-            int maxHeight = 750;
-            if (image.getWidth() > maxWidth || image.getHeight() > maxHeight) {
-                double widthScale = (double) maxWidth / image.getWidth();
-                double heightScale = (double) maxHeight / image.getHeight();
-                double scale = Math.min(widthScale, heightScale);
-                int newWidth = (int) (image.getWidth() * scale);
-                int newHeight = (int) (image.getHeight() * scale);
-                BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, image.getType());
-                Graphics2D g2d = resizedImage.createGraphics();
-                g2d.drawImage(image, 0, 0, newWidth, newHeight, null);
-                g2d.dispose();
-                image = resizedImage;
-            }
-
-            int maxPaletteSize = 10;
-            ColorPaletteProblem problem = new ColorPaletteProblem(image, maxPaletteSize);
-
-            CrossoverOperator<IntegerSolution> crossoverOperator = new IntegerSBXCrossover(0.8, 20);
-            MutationOperator<IntegerSolution> mutationOperator = new IntegerPolynomialMutation(1.0 / problem.getNumberOfVariables(), 20);
-            SelectionOperator<List<IntegerSolution>, IntegerSolution> selectionOperator = new BinaryTournamentSelection<>(new RankingAndCrowdingDistanceComparator<>());
+            BufferedImage image = ColorPaletteUtils.loadAndResizeImage(imageName, maxWidth, maxHeight);
+            ColorPaletteProblem problem = new ColorPaletteProblem(image, maxPaletteSize, true);
+            
+            CrossoverOperator<IntegerSolution> crossover = new IntegerSBXCrossover(0.7, 20);
+            MutationOperator<IntegerSolution> mutation = new IntegerPolynomialMutation(0.08, 20);
+            SelectionOperator<List<IntegerSolution>, IntegerSolution> selection = new BinaryTournamentSelection<>(new RankingAndCrowdingDistanceComparator<>());
 
             ColorPaletteNSGAII algorithm = new ColorPaletteNSGAII(
                 problem,
-                5000,
-                50,
-                crossoverOperator,
-                mutationOperator,
-                selectionOperator,
-                InitialPopulationAlgorithm.DEFAULT
+                10000,
+                150,
+                crossover,
+                mutation,
+                selection,
+                InitialPopulationAlgorithm.KMEANS
             );
 
             long startTime = System.currentTimeMillis();
             algorithm.run();
             long endTime = System.currentTimeMillis();
-
             List<IntegerSolution> population = algorithm.getResult();
-            IntegerSolution bestSolution = population.get(0);
 
-            List<Integer> variables = bestSolution.getVariables();
-            int numComponents = 4; // R, G, B, Active flag
+            List<IntegerSolution> uniquePopulation = ColorPaletteUtils.removeDuplicates(population, maxPaletteSize);
+            
+            imageName = imageName.substring(0, imageName.lastIndexOf("."));
 
-            System.out.println("Generated color palette:");
-            List<Color> palette = new ArrayList<>();
-            for (int i = 0; i < variables.size(); i += numComponents) {
-                int r = variables.get(i);
-                int g = variables.get(i + 1);
-                int b = variables.get(i + 2);
-                int active = variables.get(i + 3);
+            ColorPaletteUtils.createOutputDirectory(imageName);
+            ColorPaletteUtils.createPalettesImages(uniquePopulation, imageName, maxPaletteSize, true, true);
+            ColorPaletteUtils.writeCSV(uniquePopulation, imageName, maxPaletteSize, true);
 
-                if (active == 1) {
-                    Color color = new Color(r, g, b);
-                    palette.add(color);
-                    System.out.println("Color: R=" + r + ", G=" + g + ", B=" + b);
-                }
-            }
-
-            int squareSize = 50;
-            BufferedImage paletteImage = new BufferedImage(squareSize * palette.size(), squareSize, BufferedImage.TYPE_INT_RGB);
-            Graphics g = paletteImage.getGraphics();
-            for (int i = 0; i < palette.size(); i++) {
-                g.setColor(palette.get(i));
-                g.fillRect(i * squareSize, 0, squareSize, squareSize);
-            }
-            g.dispose();
-
-            File outputfile = new File(imageName + "_palette.png");
-            ImageIO.write(paletteImage, "png", outputfile);
-
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().open(outputfile);
-            }
-
-            System.out.println("Objective 1 (Distance): " + bestSolution.getObjective(0));
-            System.out.println("Objective 2 (Palette size): " + palette.size());
-
-            long executionTime = endTime - startTime;
-            System.out.println("Total execution time: " + (executionTime / 1000.0) + " seconds");
+            System.out.printf("\nExecution time: %.2f seconds \n", (endTime - startTime) / 1000.0);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 }

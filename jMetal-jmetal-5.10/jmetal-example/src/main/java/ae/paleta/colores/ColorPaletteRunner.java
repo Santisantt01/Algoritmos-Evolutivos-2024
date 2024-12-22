@@ -26,10 +26,10 @@ public class ColorPaletteRunner {
         BufferedImage image = ImageIO.read(ColorPaletteRunner.class.getResourceAsStream(imageName + ".jpg"));
 
         int maxPaletteSize = 10;
-        ColorPaletteProblem problem = new ColorPaletteProblem(image, maxPaletteSize);
+        ColorPaletteProblem problem = new ColorPaletteProblem(image, maxPaletteSize, true);
 
         CrossoverOperator<IntegerSolution> crossover = new IntegerSBXCrossover(0.8, 20);
-        MutationOperator<IntegerSolution> mutation = new IntegerPolynomialMutation(1.0 / problem.getNumberOfVariables(), 20);
+        MutationOperator<IntegerSolution> mutation = new IntegerPolynomialMutation(0.03, 20);
         SelectionOperator<List<IntegerSolution>, IntegerSolution> selection = new BinaryTournamentSelection<>();
 
         Algorithm<List<IntegerSolution>> algorithm = new NSGAIIBuilder<>(problem, crossover, mutation, 50)
